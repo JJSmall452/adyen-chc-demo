@@ -8,12 +8,11 @@ A self-contained, synthetic **bol.com** checkout that shows what the experience 
 
 ## The journey (desktop)
 
-1. **Payment method** — choose **Pay by bank** (the new option, shown alongside *iDEAL | Wero* and *Card*), then pick your bank.
-2. **Tink consent screen** — the customer-hosted consent: registered legal disclosure, Terms of Service / Privacy Notice / "Learn how your data is used" links, amount, beneficiary, reference, source account, and accept/decline controls.
-3. **Tink Link / QR hand-off** — a QR to "scan with your banking app", with a **phone mock** beside it that plays out the mobile journey (bank login → approve → pay). Modelled on the real desktop → mobile hand-off.
-4. **Order confirmation** — redirected back to the bol.com confirmation screen.
+1. **bol.com checkout** — choose **Pay by bank** (the new method, shown alongside *iDEAL | Wero* and *Card*), then pick your bank. Because this is *customer-hosted* consent, the consent disclosure appears **inline on the bol.com checkout itself**: registered legal disclosure, Terms of Service / Privacy Notice / "Learn how your data is used" links, amount, beneficiary, reference, and source account. Then press **Betalen**.
+2. **Tink Link / QR hand-off** — a QR to "scan with your banking app", with a **phone mock** beside it that plays out the mobile journey (bank login → approve → pay). Modelled on the real desktop → mobile hand-off.
+3. **Order confirmation** — redirected back to the bol.com confirmation screen.
 
-The visuals are recreated from a recording of the real bol.com iDEAL | Wero checkout (see [`reference/`](reference/)).
+The UI is matched to a recording of the real bol.com iDEAL | Wero checkout (white header, pale-yellow notice, lavender section cards, "Overzicht" sidebar).
 
 ## For the eng team: automated monitoring
 
@@ -59,4 +58,3 @@ In production the monitor reaches the **real** consent screen (via allowlisted e
 | `spec.json` | Compliance + journey contract (v3) |
 | `test/check.js` | Starter Playwright monitor |
 | `package.json` | `npm test` + a tiny static `npm run serve` |
-| `reference/` | Frames from the real bol.com checkout recording the demo is based on |

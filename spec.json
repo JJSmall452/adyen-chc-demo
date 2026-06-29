@@ -6,7 +6,7 @@
 
   "navigateToConsent": [
     { "selector": "[data-test=\"method-bank\"]", "note": "Select 'Pay by bank' to reveal the bank picker." },
-    { "selector": "[data-test=\"bank-ing\"]",    "note": "Pick a bank — this reveals the Tink consent screen." }
+    { "selector": "[data-test=\"bank-ing\"]",    "note": "Pick a bank — this reveals the customer-hosted consent block inline on the bol.com checkout." }
   ],
 
   "checks": [
@@ -34,8 +34,8 @@
     "steps": [
       { "action": "click",  "selector": "[data-test=\"method-bank\"]",      "note": "Select Pay by bank" },
       { "action": "click",  "selector": "[data-test=\"bank-ing\"]",         "note": "Choose ING" },
-      { "action": "expect", "selector": "[data-test=\"consent-screen\"]",   "note": "Tink consent screen shown" },
-      { "action": "click",  "selector": "[data-test=\"accept\"]",           "note": "Accept consent and pay" },
+      { "action": "expect", "selector": "[data-test=\"consent-screen\"]",   "note": "Inline customer-hosted consent shown on the checkout" },
+      { "action": "click",  "selector": "[data-test=\"accept\"]",           "note": "Accept consent and pay (the bol.com Betalen button)" },
       { "action": "expect", "selector": "[data-test=\"qr-screen\"]",        "note": "Tink Link QR hand-off shown" },
       { "action": "expect", "selector": "[data-test=\"qr-code\"]",          "note": "QR code rendered" },
       { "action": "click",  "selector": "[data-test=\"phone-scan\"]",       "note": "Simulate scanning the QR on the phone" },
