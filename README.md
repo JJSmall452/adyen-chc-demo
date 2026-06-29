@@ -19,6 +19,13 @@ The UI is matched to recordings of the real bol.com iDEAL | Wero checkout (white
 
 The same journey on mobile bol.com, rendered inside a phone frame. It matches the mobile web flow: a **"Betalen via" bottom sheet** for the method picker, a single-column bank list, the inline consent, and an **app-to-app bank hand-off** (login + approve in the bank app — no QR, since the phone *is* the device). Amount, beneficiary, reference and source account are not restated on the consent block — they live in the bol.com order context.
 
+#### Two mobile variants (to contrast with Adyen)
+
+- **`mobile.html` — *without* mobile redirect (proposed):** Betalen → straight to the bank app. This is the target experience.
+- **`mobile-with-redirect.html` — *with* mobile redirect (Adyen today):** inserts the extra **"Confirm your payment / Open [bank] app in N"** interstitial between Betalen and the bank app. This is the step we want Adyen to remove from their integration.
+
+The two pages cross-link so you can flip between them when walking Adyen through the difference.
+
 ## For the eng team: automated monitoring
 
 Everything testable hangs off stable `data-test` selectors, and the contract lives in [`spec.json`](spec.json) — one source of truth for humans and the monitor.

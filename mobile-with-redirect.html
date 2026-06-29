@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>bol.com mobile — Pay by bank (without mobile redirect) — CHC demo</title>
+<title>bol.com mobile — Pay by bank (with mobile redirect) — CHC demo</title>
 <style>
 /* ───────────────────────────────────────────────────────────────────────────
    Adyen CHC trial — MOBILE checkout demo. Synthetic bol.com-styled.
@@ -171,7 +171,7 @@ h2.sec{font-size:18px;font-weight:800;margin:18px 0 10px}
 </style>
 </head>
 <body>
-<div class="demo-cap"><strong>DEMO — mobile (without mobile redirect)</strong> — the proposed bol.com Customer Hosted Consent flow: straight from <em>Betalen</em> to the bank app, no extra Adyen confirm screen. Synthetic; not a real page. · <a href="mobile-with-redirect.html">Compare ▸ with redirect (today)</a> · <a href="index.html">🖥 Desktop</a></div>
+<div class="demo-cap"><strong>DEMO — mobile (with mobile redirect · Adyen today)</strong> — shows the extra <em>“Confirm your payment”</em> screen Adyen's current mobile integration inserts between <em>Betalen</em> and the bank app. We want this step removed. Synthetic; not a real page. · <a href="mobile.html">Compare ▸ without redirect (proposed)</a> · <a href="index.html">🖥 Desktop</a></div>
 
 <div class="device">
   <div class="island"></div>
@@ -382,11 +382,31 @@ function selectBank(id){
   document.getElementById('consent-block').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-/* proceed → redirect to bank app */
+/* proceed → Adyen "Confirm your payment" interstitial → redirect to bank app.
+   This extra screen is what Adyen's current mobile integration inserts; the
+   sister page (mobile.html) skips it. */
 function startBank(){
   if(!selectedBank){ document.getElementById('open-methods').scrollIntoView({behavior:'smooth'}); return; }
   showStep('bank');
-  bankRedirect();
+  confirmRedirect();
+}
+function confirmRedirect(){
+  var n = 5;
+  document.getElementById('bank-content').innerHTML =
+    '<div class="appbar"><span class="title" style="transform:none;margin:0 auto">Betalen</span><button class="back" data-test="confirm-close" id="confirm-close" style="margin-left:auto">✕</button></div>' +
+    '<div class="view"><div class="pad center">' +
+      '<h2 class="sec" style="margin-top:26px">Confirm your payment</h2>' +
+      '<p class="muted">To continue, you must open the '+selectedBank.name+' app and confirm the payment with your bank.</p>' +
+      '<div style="margin:32px auto;display:flex;justify-content:center"><span class="logo" style="width:84px;height:84px;border-radius:18px;font-size:15px;background:'+selectedBank.color+'">'+selectedBank.mark+'</span></div>' +
+      '<button class="bbtn" data-test="confirm-redirect" id="open-app-btn" style="background:#16162a">Open '+selectedBank.name+' app in <span id="cd">'+n+'</span></button>' +
+      '<p class="muted" style="margin-top:16px;font-size:12px">⚠️ Extra step shown by Adyen’s current mobile integration — the proposed flow skips this.</p>' +
+    '</div></div>';
+  window.__cd = window.setInterval(function(){
+    var cd = document.getElementById('cd');
+    if(!cd){ window.clearInterval(window.__cd); return; }
+    n--; if(n <= 0){ window.clearInterval(window.__cd); bankRedirect(); return; }
+    cd.textContent = n;
+  }, 1000);
 }
 function bankRedirect(){
   document.getElementById('bank-content').innerHTML =
@@ -469,6 +489,8 @@ document.addEventListener('click', function(e){
   if(e.target.closest('#learn-data-link')){ e.preventDefault(); document.getElementById('learn-data').classList.remove('hidden'); return; }
   if(e.target.closest('[data-close-learn]')){ document.getElementById('learn-data').classList.add('hidden'); return; }
   if(e.target.id==='pay-cta'){ startBank(); return; }
+  if(e.target.closest('#open-app-btn')){ window.clearInterval(window.__cd); bankRedirect(); return; }
+  if(e.target.id==='confirm-close'){ window.clearInterval(window.__cd); showStep('checkout'); return; }
   if(e.target.id==='decline'){ openSheet(); return; }
   if(e.target.id==='faceid-btn' || e.target.closest('#faceid')){ runFaceScan(); return; }
   if(e.target.id==='approve-btn'){ bankProcessing(); return; }
