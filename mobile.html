@@ -6,22 +6,23 @@
 <title>bol.com mobile — Pay by bank (without mobile redirect) — CHC demo</title>
 <style>
 /* ───────────────────────────────────────────────────────────────────────────
-   Adyen CHC trial — MOBILE checkout demo. Synthetic bol.com-styled.
-   Matched to a recording of the real bol.com mobile web checkout
-   (Bestellen sheet, "Betalen via" method sheet, pay.ideal.nl bank list).
+   Adyen CHC trial — MOBILE checkout demo (WITHOUT mobile redirect).
+   Synthetic bol.com-styled, matched to a recording of the real bol.com mobile
+   web "Bestellen" page: yellow notice, Betaalmethode (with "Wijzig
+   betaalmethode" → "Betalen via" sheet), Bezorgadres, Bezorgmoment.
 
    Mobile flow (app-to-app — no QR; the phone IS the device):
-     Bestellen → "Betalen via" sheet → pick Pay by bank → choose bank →
-     inline customer-hosted consent → Betalen → redirect to bank app
+     Bestellen → Wijzig betaalmethode → "Betalen via" sheet → Pay by bank →
+     choose bank → inline customer-hosted consent → Betalen → bank app
      (login + approve) → bol.com order confirmation.
 
-   Rendered inside a phone frame so it reads as the mobile experience on a
-   laptop; on a real phone it is the full-screen flow. Stable data-test hooks.
+   This is the PROPOSED flow — no extra Adyen "Confirm your payment" screen.
+   See mobile-with-redirect.html for today's behaviour. Stable data-test hooks.
    ─────────────────────────────────────────────────────────────────────────── */
 :root{
   --bol-navy:#0b0da7; --bol-action:#3b33ff; --bol-action-hover:#2a23e0;
   --ink:#141414; --muted:#6b6b70; --line:#e6e6ec; --lav:#e9effd; --lav-line:#d7e0f7;
-  --red:#e2001a; --yellow:#fcf3b5; --ok:#0a7d33; --ideal-pink:#cc0066;
+  --red:#e2001a; --yellow:#fcf3b5; --gold:#f1c40f; --ok:#0a7d33; --ideal-pink:#cc0066;
 }
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);
@@ -30,7 +31,7 @@ a{color:var(--bol-action);text-decoration:none}
 button{font:inherit;border:0;cursor:pointer}
 .hidden{display:none !important}
 
-.demo-cap{font-size:13px;color:#55555c;text-align:center;max-width:380px;margin-bottom:16px}
+.demo-cap{font-size:13px;color:#55555c;text-align:center;max-width:400px;margin-bottom:16px}
 .demo-cap strong{color:#222}
 .demo-cap a{font-weight:600}
 
@@ -41,57 +42,69 @@ button{font:inherit;border:0;cursor:pointer}
 .screen{position:relative;width:100%;height:100%;background:#fff;border-radius:36px;overflow:hidden;display:flex;flex-direction:column}
 
 /* iOS status bar */
-.status{height:50px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 6px;font-size:14px;font-weight:600}
+.status{height:48px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 5px;font-size:14px;font-weight:600}
 .status .right{display:flex;align-items:center;gap:6px}
 .status .bat{width:24px;height:12px;border:1px solid #111;border-radius:3px;position:relative}
 .status .bat::after{content:"";position:absolute;right:-3px;top:3px;width:2px;height:6px;background:#111;border-radius:0 1px 1px 0}
 .status .bat i{position:absolute;inset:1.5px;width:70%;background:#111;border-radius:1px;display:block}
 
-/* app top bar */
-.appbar{flex:0 0 auto;display:flex;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line);gap:10px}
+/* app top bar (Bestellen … Sluiten) */
+.appbar{flex:0 0 auto;display:flex;align-items:center;padding:10px 16px 12px;gap:10px;position:relative}
+.appbar .title{font-weight:800;font-size:19px;margin:0 auto}
+.appbar .sluiten{position:absolute;right:14px;top:8px;background:#f1f1f4;border-radius:18px;padding:7px 16px;font-weight:600;font-size:14px}
 .appbar .back{color:var(--bol-navy);font-weight:700;font-size:15px;background:none}
-.appbar .title{font-weight:800;font-size:17px;margin:0 auto;transform:translateX(-12px)}
 
 /* scroll area */
 .view{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.pad{padding:14px 16px 120px}
+.pad{padding:6px 16px 150px}
 
-h2.sec{font-size:18px;font-weight:800;margin:18px 0 10px}
 .muted{color:var(--muted);font-size:13px}
 
-/* order summary card */
-.ordercard{border:1px solid var(--line);border-radius:12px;padding:14px}
-.ordercard .totaal{font-size:13px;color:var(--muted)}
-.ordercard .amt{font-size:26px;font-weight:800;color:var(--red);line-height:1.1;margin-top:2px}
-.prod{display:flex;gap:12px;margin-top:14px}
-.prod .thumb{width:54px;height:54px;border-radius:10px;background:#dfe6f5;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:26px}
-.prod .t{font-size:13px;line-height:1.35}
-.ln{display:flex;justify-content:space-between;font-size:14px;padding:5px 0}
-.ln.grand{font-weight:800;border-top:1px solid var(--line);margin-top:6px;padding-top:8px}
+/* notice */
+.notice{display:flex;align-items:flex-start;gap:12px;background:var(--yellow);border-left:5px solid var(--gold);
+  border-radius:8px;padding:12px 14px;font-size:13.5px;line-height:1.4;margin:6px 0 4px}
+.notice .i{width:22px;height:22px;border-radius:50%;border:1.5px solid #b8860b;color:#8a6d0b;flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;font-style:italic;font-weight:700;font-size:13px;margin-top:1px}
 
-/* "choose method" trigger + selected method */
-.method-trigger{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:14px;background:#fff;width:100%;text-align:left}
-.method-trigger .chev{margin-left:auto;color:var(--muted);font-size:20px}
-.method-trigger > span:not(.pm-logo):not(.chev){flex:1}
-.method-trigger .lab{display:block;font-weight:700}
-.method-trigger .sub{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+/* section heading */
+.sec-head{display:flex;align-items:center;gap:11px;margin:22px 0 10px}
+.sec-ic{width:32px;height:32px;border-radius:9px;background:var(--lav);color:var(--bol-navy);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.sec-ic svg{width:17px;height:17px}
+.sec-head h2{font-size:19px;font-weight:800;margin:0;letter-spacing:-.3px}
 
-.tag-new{background:var(--ok);color:#fff;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:3px 6px;border-radius:5px}
-.pm-logo{width:38px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;color:#fff;flex:0 0 auto}
+/* lavender section card */
+.lav-card{background:var(--lav);border-radius:14px;padding:14px}
+
+/* white sub-card with selected blue bar */
+.sub{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px}
+.sub.sel{border:1px solid #cfd6ea;border-left:5px solid var(--bol-action)}
+.sub h4{margin:0 0 6px;font-size:15px}
+.sub .addr{font-size:14px;color:#33333a;line-height:1.45;display:flex;gap:8px}
+.sub .addr svg{width:18px;height:18px;flex:0 0 auto;margin-top:2px;color:var(--muted)}
+
+/* current-method sub-card */
+.cur-method .top{font-size:15px}
+.cur-method .via{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:14px}
+.cur-method .via b{font-weight:800}
 .ideal-pill{display:inline-flex;border-radius:5px;overflow:hidden;font-weight:800;font-size:11px;line-height:1;flex:0 0 auto}
 .ideal-pill .i{background:var(--ideal-pink);color:#fff;padding:5px 6px}
 .ideal-pill .w{background:#ffd200;color:#141414;padding:5px 6px}
+.pm-logo{width:38px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;color:#fff;flex:0 0 auto}
 
-/* selected pay-by-bank block on checkout */
-.pbb-sel{border:1px solid var(--lav-line);border-left:5px solid var(--bol-action);border-radius:12px;padding:14px;background:#fbfcff}
-.pbb-sel .head{display:flex;align-items:center;gap:10px}
-.pbb-sel .head .lab{font-weight:800}
-.pbb-sel .change{margin-left:auto;color:var(--bol-action);font-weight:700;font-size:13px;background:none}
+/* outline button (Wijzig …) */
+.outline-btn{display:block;margin:14px auto 2px;background:#fff;border:1.5px solid var(--bol-action);color:var(--bol-action);font-weight:700;border-radius:24px;padding:11px 20px}
+
+.tag-new{background:var(--ok);color:#fff;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:3px 6px;border-radius:5px}
+
+/* selected Pay-by-bank block */
+.pbb-sel .head{display:flex;align-items:center;gap:9px}
+.pbb-sel .head .lab{font-weight:800;font-size:15px}
+.pbb-sel .head .change{margin-left:auto;color:var(--bol-action);font-weight:700;font-size:13px;background:none}
 .label{font-size:13px;font-weight:700;margin:14px 0 9px}
 
 /* bank list (single column, like pay.ideal.nl) */
 .bank-list{display:flex;flex-direction:column;gap:9px}
-.bank-row{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:11px 13px;background:#fff}
+.bank-row{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:11px 13px;background:#fff;width:100%;text-align:left}
 .bank-row.selected{border-color:var(--bol-action);box-shadow:0 0 0 2px rgba(59,51,255,.18)}
 .bank-row .bank-name{font-weight:600}
 .logo{width:40px;height:40px;border-radius:10px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:11px;text-align:center;line-height:1.05}
@@ -105,8 +118,15 @@ h2.sec{font-size:18px;font-weight:800;margin:18px 0 10px}
 .legal-disclosure a{color:var(--bol-action);font-weight:600;text-decoration:underline}
 .consent .c-foot{display:flex;align-items:center;gap:6px;justify-content:center;color:var(--muted);font-size:12px;padding:10px;border-top:1px solid var(--line)}
 
+/* delivery-time picker */
+.daypick{display:flex;gap:7px;margin:2px 0 12px;flex-wrap:wrap}
+.day{border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:13px;background:#fff;min-width:40px;text-align:center}
+.day.sel{border-color:var(--bol-action);font-weight:700;color:var(--bol-action)}
+.slot{border:1px solid var(--line);border-left:5px solid var(--bol-action);border-radius:10px;padding:11px 13px;font-size:13px;background:#fff}
+
 /* sticky pay bar */
-.paybar{position:absolute;left:0;right:0;bottom:0;padding:12px 16px 22px;background:linear-gradient(#fff0,#fff 22%);}
+.paybar{position:absolute;left:0;right:0;bottom:0;padding:10px 16px 22px;background:linear-gradient(#fff0,#fff 26%)}
+.paybar .totline{display:flex;justify-content:space-between;font-size:14px;font-weight:800;padding:4px 4px 10px}
 .btn-pay{width:100%;background:var(--bol-action);color:#fff;font-weight:800;font-size:16px;border-radius:26px;padding:15px}
 .btn-pay:hover{background:var(--bol-action-hover)}
 .decline-link{display:block;width:100%;text-align:center;margin-top:9px;background:none;color:var(--bol-action);font-weight:600;font-size:13px}
@@ -126,7 +146,7 @@ h2.sec{font-size:18px;font-weight:800;margin:18px 0 10px}
 .mrow .chev{align-self:center;color:var(--muted);font-size:20px}
 .mrow.disabled{opacity:.45}
 
-/* ── bank redirect / login / approve (full-screen takeover) ─────────────── */
+/* ── bank app login / approve ───────────────────────────────────────────── */
 .bank-head{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:14px 16px;color:#fff}
 .bank-head .logo{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.2);font-size:8px}
 .bank-head .t{font-weight:800;font-size:16px}
@@ -160,9 +180,8 @@ h2.sec{font-size:18px;font-weight:800;margin:18px 0 10px}
 .confirmed h1{font-size:22px;margin:0 0 8px}
 .confirmed .kv{display:grid;grid-template-columns:130px 1fr;gap:7px 10px;text-align:left;max-width:300px;margin:18px auto;font-size:14px}
 .confirmed .kv dt{color:var(--muted)}.confirmed .kv dd{margin:0;font-weight:600}
-.outline-btn{background:#fff;border:1.5px solid var(--bol-action);color:var(--bol-action);font-weight:700;border-radius:24px;padding:12px 18px;margin-top:8px}
 
-/* "Learn how your data is used" sheet */
+/* learn sheet */
 .learn-overlay{position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:35;display:flex;align-items:flex-end}
 .learn{background:#fff;width:100%;border-radius:20px 20px 0 0;max-height:80%;overflow-y:auto;padding:20px}
 .learn h3{margin:0 0 12px;font-size:18px}.learn h4{margin:16px 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
@@ -171,7 +190,7 @@ h2.sec{font-size:18px;font-weight:800;margin:18px 0 10px}
 </style>
 </head>
 <body>
-<div class="demo-cap"><strong>DEMO — mobile (without mobile redirect)</strong> — the proposed bol.com Customer Hosted Consent flow: straight from <em>Betalen</em> to the bank app, no extra Adyen confirm screen. Synthetic; not a real page. · <a href="mobile-with-redirect.html">Compare ▸ with redirect (today)</a> · <a href="index.html">🖥 Desktop</a></div>
+<div class="demo-cap"><strong>DEMO — mobile (without mobile redirect)</strong> — the proposed bol.com Customer Hosted Consent flow: straight from <em>Betalen</em> to the bank app. Synthetic; not a real page. · <a href="mobile-with-redirect.html">Compare ▸ with redirect (today)</a> · <a href="index.html">🖥 Desktop</a></div>
 
 <div class="device">
   <div class="island"></div>
@@ -183,69 +202,105 @@ h2.sec{font-size:18px;font-weight:800;margin:18px 0 10px}
 
     <!-- ════ SCREEN 1 · Bestellen (checkout) ════ -->
     <div data-screen="checkout" style="display:flex;flex-direction:column;flex:1;min-height:0">
-      <div class="appbar"><button class="back">‹ bol</button><span class="title">Bestellen</span></div>
+      <div class="appbar"><span class="title">Bestellen</span><span class="sluiten">Sluiten</span></div>
       <div class="view"><div class="pad">
 
-        <div class="ordercard">
-          <div class="totaal">Totaal</div>
-          <div class="amt">€ 69,<span style="font-size:16px">95</span></div>
-          <div class="prod">
-            <span class="thumb">❄️</span>
-            <span class="t"><b>Mini Aircooler met Water USB-C — LED Licht</b><br><span class="muted">Verkoop door: Karsten Int · Aantal 1</span></span>
-          </div>
+        <div class="notice">
+          <span class="i">i</span>
+          <span>Wegens de aanhoudende hitte kan de bezorging van je bestelling langer duren. Bekijk je track &amp; trace voor de laatste status van je bestelling.</span>
         </div>
 
-        <h2 class="sec">Betaalmethode</h2>
+        <!-- Betaalmethode -->
+        <div class="sec-head">
+          <span class="sec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/></svg></span>
+          <h2>Betaalmethode</h2>
+        </div>
+        <div class="lav-card">
 
-        <!-- before a method is chosen: trigger that opens the sheet -->
-        <button class="method-trigger" data-test="open-methods" id="open-methods">
-          <span class="ideal-pill"><span class="i">iDEAL</span><span class="w">wero</span></span>
-          <span><span class="lab">Kies je betaalmethode</span><span class="sub">iDEAL | Wero, Pay by bank, Creditcard…</span></span>
-          <span class="chev">›</span>
-        </button>
-
-        <!-- after Pay by bank is chosen -->
-        <div class="pbb-sel hidden" id="pbb-sel">
-          <div class="head">
-            <span class="lab">Pay by bank</span> <span class="tag-new">Nieuw</span>
-            <button class="change" data-test="change-method" id="change-method">Wijzig</button>
-          </div>
-          <div class="muted" style="margin-top:4px">Betaal direct vanaf je eigen bankrekening · Powered by Tink, via Adyen</div>
-
-          <p class="label">Kies je bank</p>
-          <div class="bank-list" id="bank-list" role="radiogroup" aria-label="Choose your bank"></div>
-
-          <div class="consent hidden" id="consent-block" data-test="consent-screen">
-            <div class="c-head">
-              <span class="chosen-bank" data-test="consent-bank" id="chosen-bank"></span>
-              <span class="muted" style="margin-left:auto">Beveiligd door Tink</span>
+          <!-- default: current method = iDEAL | Wero, change via the sheet -->
+          <div id="method-default">
+            <div class="sub sel cur-method">
+              <div class="top">iDEAL | Wero</div>
+              <div class="via"><span class="ideal-pill"><span class="i">iDEAL</span><span class="w">wero</span></span> Online betalen via: <b>iDEAL | Wero</b></div>
             </div>
-            <p class="legal-disclosure" data-test="legal-disclosure">
-              bol.com uses Tink to initiate your payment. By selecting &ldquo;Betalen&rdquo;, you agree to Tink's
-              <a href="https://tink.com/legal/end-user-terms" target="_blank" rel="noopener" data-test="tos-link">End-User Terms of Service</a>
-              and acknowledge that you have read and understood the
-              <a href="https://tink.com/legal/privacy-notice" target="_blank" rel="noopener" data-test="privacy-link">Privacy Notice</a>.
-              <a href="#" data-test="learn-data-link" id="learn-data-link">Learn how your data is used</a>.
-            </p>
-            <div class="c-foot">🔒 Beveiligd door <b>Tink</b> · A Visa solution</div>
+            <button class="outline-btn" data-test="open-methods" id="open-methods">Wijzig betaalmethode</button>
           </div>
+
+          <!-- after Pay by bank chosen -->
+          <div id="pbb-sel" class="hidden">
+            <div class="sub sel">
+              <div class="pbb-sel">
+                <div class="head"><span class="lab">Pay by bank</span> <span class="tag-new">Nieuw</span>
+                  <button class="change" data-test="change-method" id="change-method">Wijzig</button></div>
+                <div class="muted" style="margin-top:4px">Betaal direct vanaf je eigen bankrekening · Powered by Tink, via Adyen</div>
+                <p class="label">Kies je bank</p>
+                <div class="bank-list" id="bank-list" role="radiogroup" aria-label="Choose your bank"></div>
+                <div class="consent hidden" id="consent-block" data-test="consent-screen">
+                  <div class="c-head">
+                    <span class="chosen-bank" data-test="consent-bank" id="chosen-bank"></span>
+                    <span class="muted" style="margin-left:auto">Beveiligd door Tink</span>
+                  </div>
+                  <p class="legal-disclosure" data-test="legal-disclosure">
+                    bol.com uses Tink to initiate your payment. By selecting &ldquo;Betalen&rdquo;, you agree to Tink's
+                    <a href="https://tink.com/legal/end-user-terms" target="_blank" rel="noopener" data-test="tos-link">End-User Terms of Service</a>
+                    and acknowledge that you have read and understood the
+                    <a href="https://tink.com/legal/privacy-notice" target="_blank" rel="noopener" data-test="privacy-link">Privacy Notice</a>.
+                    <a href="#" data-test="learn-data-link" id="learn-data-link">Learn how your data is used</a>.
+                  </p>
+                  <div class="c-foot">🔒 Beveiligd door <b>Tink</b> · A Visa solution</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Bezorgadres -->
+        <div class="sec-head">
+          <span class="sec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="6" width="13" height="11" rx="1.5"/><path d="M14 9h4l3 3v5h-7z"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg></span>
+          <h2>Bezorgadres</h2>
+        </div>
+        <div class="lav-card">
+          <div class="sub sel">
+            <h4>Op adres</h4>
+            <div class="addr">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+              <span>J. Jansen<br>Voorbeeldstraat 12<br>1011 AB Amsterdam</span>
+            </div>
+          </div>
+          <button class="outline-btn">Wijzig bezorgadres of afhaalpunt</button>
+        </div>
+
+        <!-- Bezorgmoment -->
+        <div class="sec-head">
+          <span class="sec-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></span>
+          <h2>Bezorgmoment</h2>
+        </div>
+        <div class="lav-card">
+          <div class="daypick">
+            <span class="day">Vr</span><span class="day">Za</span><span class="day">Zo</span>
+            <span class="day sel">Ma</span><span class="day">Di</span><span class="day">Wo</span><span class="day">Do</span>
+          </div>
+          <div class="slot"><b>Maandag 29 juni</b> · 08:00 – 22:00 · Gratis</div>
         </div>
 
       </div></div>
+
       <div class="paybar">
+        <div class="totline"><span>Te betalen</span><span>€ 69,95</span></div>
         <button class="btn-pay" data-test="accept" id="pay-cta">Betalen €&nbsp;69,95</button>
         <button class="decline-link" data-test="decline" id="decline">Andere betaalmethode kiezen</button>
       </div>
     </div>
 
-    <!-- ════ SCREEN 2 · bank app redirect / login / approve ════ -->
+    <!-- ════ SCREEN 2 · bank app ════ -->
     <div data-screen="bank" class="hidden" style="display:none;flex-direction:column;flex:1;min-height:0">
       <div id="bank-content" style="display:flex;flex-direction:column;flex:1;min-height:0"></div>
     </div>
 
     <!-- ════ SCREEN 3 · confirmation ════ -->
     <div data-screen="confirmed" class="hidden" style="display:none;flex-direction:column;flex:1;min-height:0">
-      <div class="appbar"><span class="title" style="transform:none;margin:0 auto">bol.com</span></div>
+      <div class="appbar"><span class="title">bol.com</span></div>
       <div class="view"><div class="pad">
         <div class="confirmed" data-test="order-confirmation">
           <div class="tick">✓</div>
@@ -256,7 +311,7 @@ h2.sec{font-size:18px;font-weight:800;margin:18px 0 10px}
             <dt>Betaald met</dt><dd data-test="paid-with" id="confirm-paidwith"></dd>
             <dt>Bestelnummer</dt><dd data-test="order-number">BOL-2026-0049213</dd>
           </dl>
-          <button class="outline-btn" data-test="restart" id="restart">Terug naar start</button>
+          <button class="outline-btn" data-test="restart" id="restart" style="display:inline-block">Terug naar start</button>
         </div>
       </div></div>
     </div>
@@ -265,42 +320,33 @@ h2.sec{font-size:18px;font-weight:800;margin:18px 0 10px}
     <div class="sheet-overlay hidden" id="sheet" data-test="methods-sheet">
       <div class="sheet">
         <div class="sheet-head"><h3>Betalen via</h3><button class="x" data-close-sheet aria-label="Close">✕</button></div>
-
         <button class="mrow" data-test="method-bank" data-method="bank">
           <span class="pm-logo" style="background:var(--bol-action)">⤳</span>
-          <span class="mr-body">
-            <span class="mr-title">Pay by bank <span class="tag-new">Nieuw</span></span>
-            <span class="mr-sub">Betaal direct vanaf je eigen bankrekening<span class="pop">Powered by Tink · via Adyen</span></span>
-          </span><span class="chev">›</span>
+          <span class="mr-body"><span class="mr-title">Pay by bank <span class="tag-new">Nieuw</span></span>
+            <span class="mr-sub">Betaal direct vanaf je eigen bankrekening<span class="pop">Powered by Tink · via Adyen</span></span></span>
+          <span class="chev">›</span>
         </button>
-
         <button class="mrow" data-test="method-ideal" data-method="ideal">
           <span class="ideal-pill"><span class="i">iDEAL</span><span class="w">wero</span></span>
-          <span class="mr-body">
-            <span class="mr-title">iDEAL | Wero</span>
-            <span class="mr-sub">Online betalen via je Nederlandse bank<span class="pop">Meest gebruikte betaalmethode in Nederland</span></span>
-          </span><span class="chev">›</span>
+          <span class="mr-body"><span class="mr-title">iDEAL | Wero</span>
+            <span class="mr-sub">Online betalen via je Nederlandse bank<span class="pop">Meest gebruikte betaalmethode in Nederland</span></span></span>
+          <span class="chev">›</span>
         </button>
-
         <button class="mrow" data-test="method-card" data-method="card">
           <span class="pm-logo" style="background:#1a1f71">VISA</span>
-          <span class="mr-body">
-            <span class="mr-title">Creditcard of betaalpas</span>
-            <span class="mr-sub">Snel en eenvoudig betalen met je creditcard of betaalpas</span>
-          </span><span class="chev">›</span>
+          <span class="mr-body"><span class="mr-title">Creditcard of betaalpas</span>
+            <span class="mr-sub">Snel en eenvoudig betalen met je creditcard of betaalpas</span></span>
+          <span class="chev">›</span>
         </button>
-
         <div class="mrow disabled">
           <span class="pm-logo" style="background:#888">⏱</span>
-          <span class="mr-body">
-            <span class="mr-title">Achteraf Betalen</span>
-            <span class="mr-sub">Helaas is het op dit moment niet mogelijk om achteraf te betalen.</span>
-          </span>
+          <span class="mr-body"><span class="mr-title">Achteraf Betalen</span>
+            <span class="mr-sub">Helaas is het op dit moment niet mogelijk om achteraf te betalen.</span></span>
         </div>
       </div>
     </div>
 
-    <!-- Learn how your data is used (sheet) -->
+    <!-- Learn how your data is used -->
     <div class="learn-overlay hidden" id="learn-data" data-test="learn-data-modal">
       <div class="learn">
         <button class="x" data-close-learn aria-label="Close">✕</button>
@@ -346,7 +392,6 @@ function showStep(name){
   });
 }
 
-/* bank list */
 (function(){
   var list = document.getElementById('bank-list');
   BANKS.forEach(function(b){
@@ -363,14 +408,9 @@ function closeSheet(){ document.getElementById('sheet').classList.add('hidden');
 
 function selectMethod(m){
   closeSheet();
-  if(m === 'bank'){
-    document.getElementById('open-methods').classList.add('hidden');
-    document.getElementById('pbb-sel').classList.remove('hidden');
-  } else {
-    /* other methods are out of scope for this demo — just reopen the picker */
-    document.getElementById('open-methods').classList.remove('hidden');
-    document.getElementById('pbb-sel').classList.add('hidden');
-  }
+  var isBank = (m === 'bank');
+  document.getElementById('method-default').classList.toggle('hidden', isBank);
+  document.getElementById('pbb-sel').classList.toggle('hidden', !isBank);
 }
 
 function selectBank(id){
@@ -382,7 +422,7 @@ function selectBank(id){
   document.getElementById('consent-block').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-/* proceed → redirect to bank app */
+/* proceed → bank app (no extra Adyen confirm screen in this version) */
 function startBank(){
   if(!selectedBank){ document.getElementById('open-methods').scrollIntoView({behavior:'smooth'}); return; }
   showStep('bank');
@@ -390,18 +430,15 @@ function startBank(){
 }
 function bankRedirect(){
   document.getElementById('bank-content').innerHTML =
-    '<div class="tink-redirect">' +
-      '<div class="badge"><span class="dot">⤳</span> Pay by bank</div>' +
-      '<div class="spinner"></div>' +
-      '<p class="muted">Je wordt veilig doorgestuurd naar de app van '+selectedBank.name+'…</p>' +
-    '</div>';
+    '<div class="tink-redirect"><div class="badge"><span class="dot">⤳</span> Pay by bank</div>' +
+      '<div class="spinner"></div><p class="muted">Je wordt veilig doorgestuurd naar de app van '+selectedBank.name+'…</p></div>';
   schedule(bankLogin, 1300);
 }
 function bankLogin(){
   document.getElementById('bank-content').innerHTML =
     '<div class="bank-head" style="background:'+selectedBank.color+'"><span class="logo">'+selectedBank.mark+'</span><span class="t">'+selectedBank.name+'</span></div>' +
     '<div class="view"><div class="pad center">' +
-      '<h2 class="sec" style="margin-top:10px">Log in bij '+selectedBank.name+'</h2>' +
+      '<h2 style="font-size:19px;margin:14px 0 4px">Log in bij '+selectedBank.name+'</h2>' +
       '<p class="muted">Bevestig je betaling aan bol.com met Face ID.</p>' +
       '<div class="faceid-wrap" id="faceid" style="color:'+selectedBank.color+'"><span class="scan"></span>'+FACEID_SVG+'</div>' +
       '<p class="muted" id="faceid-hint">Tik om in te loggen met Face ID</p>' +
@@ -426,7 +463,7 @@ function bankApprove(){
   c.innerHTML =
     '<div class="bank-head" style="background:'+selectedBank.color+'"><span class="logo">'+selectedBank.mark+'</span><span class="t">'+selectedBank.name+'</span></div>' +
     '<div class="view"><div class="pad">' +
-      '<h2 class="sec" style="margin-top:6px">Betaling goedkeuren</h2>' +
+      '<h2 style="font-size:19px;margin:6px 0 4px">Betaling goedkeuren</h2>' +
       '<p class="muted">Kies een rekening en bevestig.</p>' +
       '<div class="acct selected" data-acct="1"><span><span class="nm">Betaalrekening</span><br><span class="bal">NL12 '+frag+' …45 67</span></span><span class="amt">€ 1.284,50</span></div>' +
       '<div class="acct" data-acct="2"><span><span class="nm">Spaarrekening</span><br><span class="bal">NL34 '+frag+' …65 43</span></span><span class="amt">€ 8.720,00</span></div>' +
@@ -453,7 +490,7 @@ function resetDemo(){
   selectedBank=null;
   document.getElementById('consent-block').classList.add('hidden');
   document.querySelectorAll('.bank-row').forEach(function(r){r.classList.remove('selected');});
-  document.getElementById('open-methods').classList.remove('hidden');
+  document.getElementById('method-default').classList.remove('hidden');
   document.getElementById('pbb-sel').classList.add('hidden');
   showStep('checkout');
 }
