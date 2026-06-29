@@ -1,0 +1,53 @@
+{
+  "name": "tink-chc-adyen-demo-contract",
+  "description": "Required elements on the customer-hosted Tink consent screen (Pay by bank) plus the end-to-end checkout journey, for the Adyen CHC trial demo. One source of truth shared by humans and automated monitors.",
+  "version": "3.0.0",
+  "demoUrl": "https://jjsmall452.github.io/adyen-chc-demo/",
+
+  "navigateToConsent": [
+    { "selector": "[data-test=\"method-bank\"]", "note": "Select 'Pay by bank' to reveal the bank picker." },
+    { "selector": "[data-test=\"bank-ing\"]",    "note": "Pick a bank — this reveals the Tink consent screen." }
+  ],
+
+  "checks": [
+    {
+      "id": "legal_disclosure",
+      "required": true,
+      "selector": "[data-test=\"legal-disclosure\"]",
+      "assert": "present_and_contains",
+      "expectedPhrase": "uses Tink to initiate your payment",
+      "note": "Must name Tink as provider/entity requesting consent, state the purpose (payment initiation), and request acceptance/acknowledgement of Tink's terms."
+    },
+    { "id": "tos_link",          "required": true,  "selector": "[data-test=\"tos-link\"]",        "assert": "present", "note": "Link to Tink End-User Terms of Service." },
+    { "id": "privacy_link",      "required": true,  "selector": "[data-test=\"privacy-link\"]",    "assert": "present", "note": "Link to Tink Privacy Notice." },
+    { "id": "learn_data_link",   "required": true,  "selector": "[data-test=\"learn-data-link\"]", "assert": "present", "note": "'Learn how your data is used' page link." },
+    { "id": "amount_shown",      "required": true,  "selector": "[data-test=\"amount\"]",          "assert": "present" },
+    { "id": "beneficiary_shown", "required": true,  "selector": "[data-test=\"beneficiary\"]",     "assert": "present" },
+    { "id": "accept_control",    "required": true,  "selector": "[data-test=\"accept\"]",          "assert": "present" },
+    { "id": "decline_control",   "required": true,  "selector": "[data-test=\"decline\"]",         "assert": "present" },
+    { "id": "payment_reference", "required": false, "selector": "[data-test=\"reference\"]",       "assert": "present", "note": "Strongly recommended, not required." },
+    { "id": "source_account",    "required": false, "selector": "[data-test=\"source-account\"]",  "assert": "present", "note": "Required only if a source account was provided." }
+  ],
+
+  "journey": {
+    "description": "Full happy path: pick Pay by bank -> bank -> consent -> accept -> QR + phone approval -> order confirmation. action 'click' clicks a selector; 'expect' waits for it to appear.",
+    "steps": [
+      { "action": "click",  "selector": "[data-test=\"method-bank\"]",      "note": "Select Pay by bank" },
+      { "action": "click",  "selector": "[data-test=\"bank-ing\"]",         "note": "Choose ING" },
+      { "action": "expect", "selector": "[data-test=\"consent-screen\"]",   "note": "Tink consent screen shown" },
+      { "action": "click",  "selector": "[data-test=\"accept\"]",           "note": "Accept consent and pay" },
+      { "action": "expect", "selector": "[data-test=\"qr-screen\"]",        "note": "Tink Link QR hand-off shown" },
+      { "action": "expect", "selector": "[data-test=\"qr-code\"]",          "note": "QR code rendered" },
+      { "action": "click",  "selector": "[data-test=\"phone-scan\"]",       "note": "Simulate scanning the QR on the phone" },
+      { "action": "click",  "selector": "[data-test=\"phone-faceid\"]",     "note": "Authenticate at the bank" },
+      { "action": "click",  "selector": "[data-test=\"phone-approve\"]",    "note": "Approve the payment" },
+      { "action": "expect", "selector": "[data-test=\"order-confirmation\"]","note": "Redirected back to the merchant confirmation" },
+      { "action": "expect", "selector": "[data-test=\"order-number\"]",     "note": "Order number present" }
+    ]
+  },
+
+  "brokenVariants": {
+    "note": "The demo accepts ?broken=<data-test> to remove a required element, so the monitor can be shown catching a non-compliant screen.",
+    "examples": ["legal-disclosure", "tos-link", "privacy-link", "decline"]
+  }
+}

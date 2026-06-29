@@ -1,0 +1,13 @@
+{
+  "name": "adyen-chc-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Synthetic bol.com checkout demo for the Adyen Customer Hosted Consent trial, plus a starter compliance/journey monitor.",
+  "scripts": {
+    "test": "node test/check.js",
+    "serve": "node -e \"require('http').createServer((q,s)=>{const f=require('path').join(process.cwd(),q.url==='/'?'index.html':q.url.split('?')[0]);require('fs').readFile(f,(e,d)=>{if(e){s.statusCode=404;return s.end('not found')}s.setHeader('content-type',f.endsWith('.json')?'application/json':'text/html');s.end(d)})}).listen(8080,()=>console.log('serving on http://localhost:8080'))\""
+  },
+  "devDependencies": {
+    "playwright": "^1.61.0"
+  }
+}
