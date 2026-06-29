@@ -21,13 +21,10 @@
     { "id": "tos_link",          "required": true,  "selector": "[data-test=\"tos-link\"]",        "assert": "present", "note": "Link to Tink End-User Terms of Service." },
     { "id": "privacy_link",      "required": true,  "selector": "[data-test=\"privacy-link\"]",    "assert": "present", "note": "Link to Tink Privacy Notice." },
     { "id": "learn_data_link",   "required": true,  "selector": "[data-test=\"learn-data-link\"]", "assert": "present", "note": "'Learn how your data is used' page link." },
-    { "id": "amount_shown",      "required": true,  "selector": "[data-test=\"amount\"]",          "assert": "present" },
-    { "id": "beneficiary_shown", "required": true,  "selector": "[data-test=\"beneficiary\"]",     "assert": "present" },
-    { "id": "accept_control",    "required": true,  "selector": "[data-test=\"accept\"]",          "assert": "present" },
-    { "id": "decline_control",   "required": true,  "selector": "[data-test=\"decline\"]",         "assert": "present" },
-    { "id": "payment_reference", "required": false, "selector": "[data-test=\"reference\"]",       "assert": "present", "note": "Strongly recommended, not required." },
-    { "id": "source_account",    "required": false, "selector": "[data-test=\"source-account\"]",  "assert": "present", "note": "Required only if a source account was provided." }
+    { "id": "accept_control",    "required": true,  "selector": "[data-test=\"accept\"]",          "assert": "present", "note": "The bol.com Betalen button." },
+    { "id": "decline_control",   "required": true,  "selector": "[data-test=\"decline\"]",         "assert": "present" }
   ],
+  "_note_amounts": "Amount, beneficiary, payment reference and source account are NOT asserted on the consent block — they are shown in the bol.com checkout context (Overzicht sidebar) rather than restated explicitly in the consent disclosure.",
 
   "journey": {
     "description": "Full happy path: pick Pay by bank -> bank -> consent -> accept -> QR + phone approval -> order confirmation. action 'click' clicks a selector; 'expect' waits for it to appear.",
@@ -46,8 +43,31 @@
     ]
   },
 
+  "mobile": {
+    "description": "Mobile checkout (mobile.html). Same consent contract (checks above); navigation differs — the method picker is a bottom sheet and the bank hand-off is app-to-app (no QR).",
+    "page": "mobile.html",
+    "navigateToConsent": [
+      { "selector": "[data-test=\"open-methods\"]", "note": "Open the 'Betalen via' sheet." },
+      { "selector": "[data-test=\"method-bank\"]",  "note": "Pick Pay by bank." },
+      { "selector": "[data-test=\"bank-ing\"]",     "note": "Pick a bank — reveals the inline consent." }
+    ],
+    "journey": {
+      "steps": [
+        { "action": "click",  "selector": "[data-test=\"open-methods\"]" },
+        { "action": "click",  "selector": "[data-test=\"method-bank\"]" },
+        { "action": "click",  "selector": "[data-test=\"bank-ing\"]" },
+        { "action": "expect", "selector": "[data-test=\"consent-screen\"]" },
+        { "action": "click",  "selector": "[data-test=\"accept\"]",        "note": "Betalen → redirect to the bank app" },
+        { "action": "click",  "selector": "[data-test=\"phone-faceid\"]",  "note": "Authenticate in the bank app" },
+        { "action": "click",  "selector": "[data-test=\"phone-approve\"]", "note": "Approve the payment" },
+        { "action": "expect", "selector": "[data-test=\"order-confirmation\"]" },
+        { "action": "expect", "selector": "[data-test=\"order-number\"]" }
+      ]
+    }
+  },
+
   "brokenVariants": {
-    "note": "The demo accepts ?broken=<data-test> to remove a required element, so the monitor can be shown catching a non-compliant screen.",
+    "note": "Both demos accept ?broken=<data-test> to remove a required element, so the monitor can be shown catching a non-compliant screen.",
     "examples": ["legal-disclosure", "tos-link", "privacy-link", "decline"]
   }
 }

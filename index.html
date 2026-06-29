@@ -238,7 +238,7 @@ aside .order{position:sticky;top:18px;border:1px solid var(--line);border-radius
 </head>
 <body>
 <div class="demo-banner">
-  <strong>DEMO</strong> — synthetic bol.com checkout for the Adyen Customer&nbsp;Hosted&nbsp;Consent trial. Not a real bol.com / Tink / Adyen page.
+  <strong>DEMO</strong> — synthetic bol.com checkout for the Adyen Customer&nbsp;Hosted&nbsp;Consent trial. Not a real bol.com / Tink / Adyen page. · <a href="mobile.html" style="color:#0d5bff;font-weight:600">📱 Mobile version</a>
 </div>
 
 <header class="bol">
@@ -293,12 +293,6 @@ aside .order{position:sticky;top:18px;border:1px solid var(--line);border-radius
                       <a href="https://tink.com/legal/privacy-notice" target="_blank" rel="noopener" data-test="privacy-link">Privacy Notice</a>.
                       <a href="#" data-test="learn-data-link" id="learn-data-link">Learn how your data is used</a>.
                     </p>
-                    <dl class="kv">
-                      <dt>Bedrag</dt><dd data-test="amount">€&nbsp;69,95</dd>
-                      <dt>Begunstigde</dt><dd data-test="beneficiary">bol.com b.v.</dd>
-                      <dt>Betalingskenmerk</dt><dd data-test="reference">BOL-2026-0049213</dd>
-                      <dt>Vanaf rekening</dt><dd data-test="source-account" id="consent-source">NL12 INGB 0001 2345 67</dd>
-                    </dl>
                   </div>
                   <div class="consent-foot">🔒 Beveiligd door <b>Tink</b> · A Visa solution</div>
                 </div>
@@ -555,7 +549,6 @@ function selectBank(id){
     t.classList.toggle('selected', on); t.setAttribute('aria-checked', on?'true':'false');
   });
   document.getElementById('chosen-bank').innerHTML = logoHTML(selectedBank) + '<span>'+selectedBank.name+'</span>';
-  document.getElementById('consent-source').textContent = 'NL12 ' + ibanFragment(selectedBank) + ' 0001 2345 67';
   document.getElementById('consent-block').classList.remove('hidden');
 }
 

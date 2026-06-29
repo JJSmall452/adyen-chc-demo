@@ -4,7 +4,8 @@ A self-contained, synthetic **bol.com** checkout that shows what the experience 
 
 > ⚠️ Synthetic demo. Not a real bol.com, Tink, or Adyen page. No real payments, banks, or data.
 
-**Live demo:** https://jjsmall452.github.io/adyen-chc-demo/
+**Live demo (desktop):** https://jjsmall452.github.io/adyen-chc-demo/
+**Live demo (mobile):** https://jjsmall452.github.io/adyen-chc-demo/mobile.html
 
 ## The journey (desktop)
 
@@ -12,17 +13,21 @@ A self-contained, synthetic **bol.com** checkout that shows what the experience 
 2. **Tink Link / QR hand-off** — a QR to "scan with your banking app", with a **phone mock** beside it that plays out the mobile journey (bank login → approve → pay). Modelled on the real desktop → mobile hand-off.
 3. **Order confirmation** — redirected back to the bol.com confirmation screen.
 
-The UI is matched to a recording of the real bol.com iDEAL | Wero checkout (white header, pale-yellow notice, lavender section cards, "Overzicht" sidebar).
+The UI is matched to recordings of the real bol.com iDEAL | Wero checkout (white header, pale-yellow notice, lavender section cards, "Overzicht" sidebar).
+
+### Mobile (`mobile.html`)
+
+The same journey on mobile bol.com, rendered inside a phone frame. It matches the mobile web flow: a **"Betalen via" bottom sheet** for the method picker, a single-column bank list, the inline consent, and an **app-to-app bank hand-off** (login + approve in the bank app — no QR, since the phone *is* the device). Amount, beneficiary, reference and source account are not restated on the consent block — they live in the bol.com order context.
 
 ## For the eng team: automated monitoring
 
 Everything testable hangs off stable `data-test` selectors, and the contract lives in [`spec.json`](spec.json) — one source of truth for humans and the monitor.
 
-[`test/check.js`](test/check.js) is the starter monitor. It:
+[`test/check.js`](test/check.js) is the starter monitor. For **both** the desktop and mobile demos it:
 
-1. **Contract** — navigates to the consent screen and asserts every required element in `spec.json.checks` (the core "is this screen compliant?" check).
+1. **Contract** — navigates to the consent screen and asserts every required element in `spec.json.checks` (the core "is this screen compliant?" check). The consent contract is identical for desktop and mobile; only the navigation differs (`spec.navigateToConsent` vs `spec.mobile.navigateToConsent`).
 2. **Negative control** — reloads with `?broken=legal-disclosure` and confirms the monitor *catches* the missing disclosure (proves it would alert).
-3. **Journey** — clicks the full happy path and confirms it reaches the order confirmation.
+3. **Journey** — clicks the full happy path and confirms it reaches the order confirmation (desktop: QR + phone mock; mobile: app-to-app).
 
 ### Run it
 
@@ -54,7 +59,8 @@ In production the monitor reaches the **real** consent screen (via allowlisted e
 
 | Path | What it is |
 |------|------------|
-| `index.html` | The whole demo — self-contained HTML/CSS/JS, no build step |
-| `spec.json` | Compliance + journey contract (v3) |
+| `index.html` | Desktop demo — self-contained HTML/CSS/JS, no build step |
+| `mobile.html` | Mobile demo (phone frame) — self-contained |
+| `spec.json` | Compliance + journey contract (v3), desktop + mobile |
 | `test/check.js` | Starter Playwright monitor |
 | `package.json` | `npm test` + a tiny static `npm run serve` |

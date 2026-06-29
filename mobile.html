@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>bol.com mobile — Pay by bank (Customer Hosted Consent demo)</title>
+<style>
+/* ───────────────────────────────────────────────────────────────────────────
+   Adyen CHC trial — MOBILE checkout demo. Synthetic bol.com-styled.
+   Matched to a recording of the real bol.com mobile web checkout
+   (Bestellen sheet, "Betalen via" method sheet, pay.ideal.nl bank list).
+
+   Mobile flow (app-to-app — no QR; the phone IS the device):
+     Bestellen → "Betalen via" sheet → pick Pay by bank → choose bank →
+     inline customer-hosted consent → Betalen → redirect to bank app
+     (login + approve) → bol.com order confirmation.
+
+   Rendered inside a phone frame so it reads as the mobile experience on a
+   laptop; on a real phone it is the full-screen flow. Stable data-test hooks.
+   ─────────────────────────────────────────────────────────────────────────── */
+:root{
+  --bol-navy:#0b0da7; --bol-action:#3b33ff; --bol-action-hover:#2a23e0;
+  --ink:#141414; --muted:#6b6b70; --line:#e6e6ec; --lav:#e9effd; --lav-line:#d7e0f7;
+  --red:#e2001a; --yellow:#fcf3b5; --ok:#0a7d33; --ideal-pink:#cc0066;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);
+  background:#eceef3;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:24px 12px 40px}
+a{color:var(--bol-action);text-decoration:none}
+button{font:inherit;border:0;cursor:pointer}
+.hidden{display:none !important}
+
+.demo-cap{font-size:13px;color:#55555c;text-align:center;max-width:380px;margin-bottom:16px}
+.demo-cap strong{color:#222}
+.demo-cap a{font-weight:600}
+
+/* ── phone frame ────────────────────────────────────────────────────────── */
+.device{width:393px;max-width:100%;height:812px;background:#0d0d12;border-radius:46px;padding:12px;
+  box-shadow:0 30px 70px rgba(0,0,0,.32);position:relative;flex:0 0 auto}
+.island{position:absolute;top:22px;left:50%;transform:translateX(-50%);width:118px;height:30px;background:#0d0d12;border-radius:18px;z-index:40}
+.screen{position:relative;width:100%;height:100%;background:#fff;border-radius:36px;overflow:hidden;display:flex;flex-direction:column}
+
+/* iOS status bar */
+.status{height:50px;flex:0 0 auto;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 6px;font-size:14px;font-weight:600}
+.status .right{display:flex;align-items:center;gap:6px}
+.status .bat{width:24px;height:12px;border:1px solid #111;border-radius:3px;position:relative}
+.status .bat::after{content:"";position:absolute;right:-3px;top:3px;width:2px;height:6px;background:#111;border-radius:0 1px 1px 0}
+.status .bat i{position:absolute;inset:1.5px;width:70%;background:#111;border-radius:1px;display:block}
+
+/* app top bar */
+.appbar{flex:0 0 auto;display:flex;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line);gap:10px}
+.appbar .back{color:var(--bol-navy);font-weight:700;font-size:15px;background:none}
+.appbar .title{font-weight:800;font-size:17px;margin:0 auto;transform:translateX(-12px)}
+
+/* scroll area */
+.view{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.pad{padding:14px 16px 120px}
+
+h2.sec{font-size:18px;font-weight:800;margin:18px 0 10px}
+.muted{color:var(--muted);font-size:13px}
+
+/* order summary card */
+.ordercard{border:1px solid var(--line);border-radius:12px;padding:14px}
+.ordercard .totaal{font-size:13px;color:var(--muted)}
+.ordercard .amt{font-size:26px;font-weight:800;color:var(--red);line-height:1.1;margin-top:2px}
+.prod{display:flex;gap:12px;margin-top:14px}
+.prod .thumb{width:54px;height:54px;border-radius:10px;background:#dfe6f5;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:26px}
+.prod .t{font-size:13px;line-height:1.35}
+.ln{display:flex;justify-content:space-between;font-size:14px;padding:5px 0}
+.ln.grand{font-weight:800;border-top:1px solid var(--line);margin-top:6px;padding-top:8px}
+
+/* "choose method" trigger + selected method */
+.method-trigger{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:14px;background:#fff;width:100%;text-align:left}
+.method-trigger .chev{margin-left:auto;color:var(--muted);font-size:20px}
+.method-trigger > span:not(.pm-logo):not(.chev){flex:1}
+.method-trigger .lab{display:block;font-weight:700}
+.method-trigger .sub{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+
+.tag-new{background:var(--ok);color:#fff;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:3px 6px;border-radius:5px}
+.pm-logo{width:38px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;color:#fff;flex:0 0 auto}
+.ideal-pill{display:inline-flex;border-radius:5px;overflow:hidden;font-weight:800;font-size:11px;line-height:1;flex:0 0 auto}
+.ideal-pill .i{background:var(--ideal-pink);color:#fff;padding:5px 6px}
+.ideal-pill .w{background:#ffd200;color:#141414;padding:5px 6px}
+
+/* selected pay-by-bank block on checkout */
+.pbb-sel{border:1px solid var(--lav-line);border-left:5px solid var(--bol-action);border-radius:12px;padding:14px;background:#fbfcff}
+.pbb-sel .head{display:flex;align-items:center;gap:10px}
+.pbb-sel .head .lab{font-weight:800}
+.pbb-sel .change{margin-left:auto;color:var(--bol-action);font-weight:700;font-size:13px;background:none}
+.label{font-size:13px;font-weight:700;margin:14px 0 9px}
+
+/* bank list (single column, like pay.ideal.nl) */
+.bank-list{display:flex;flex-direction:column;gap:9px}
+.bank-row{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:11px 13px;background:#fff}
+.bank-row.selected{border-color:var(--bol-action);box-shadow:0 0 0 2px rgba(59,51,255,.18)}
+.bank-row .bank-name{font-weight:600}
+.logo{width:40px;height:40px;border-radius:10px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:11px;text-align:center;line-height:1.05}
+
+/* inline consent */
+.consent{margin-top:14px;border:1px solid var(--lav-line);border-radius:12px;overflow:hidden;background:#fff}
+.consent .c-head{display:flex;align-items:center;gap:9px;padding:11px 13px;border-bottom:1px solid var(--line);background:#fafbff;font-size:13px}
+.chosen-bank{display:flex;align-items:center;gap:8px;font-weight:700}
+.chosen-bank .logo{width:26px;height:26px;border-radius:7px;font-size:9px}
+.legal-disclosure{font-size:13px;color:#33333a;line-height:1.55;margin:0;padding:14px}
+.legal-disclosure a{color:var(--bol-action);font-weight:600;text-decoration:underline}
+.consent .c-foot{display:flex;align-items:center;gap:6px;justify-content:center;color:var(--muted);font-size:12px;padding:10px;border-top:1px solid var(--line)}
+
+/* sticky pay bar */
+.paybar{position:absolute;left:0;right:0;bottom:0;padding:12px 16px 22px;background:linear-gradient(#fff0,#fff 22%);}
+.btn-pay{width:100%;background:var(--bol-action);color:#fff;font-weight:800;font-size:16px;border-radius:26px;padding:15px}
+.btn-pay:hover{background:var(--bol-action-hover)}
+.decline-link{display:block;width:100%;text-align:center;margin-top:9px;background:none;color:var(--bol-action);font-weight:600;font-size:13px}
+
+/* ── "Betalen via" bottom sheet ─────────────────────────────────────────── */
+.sheet-overlay{position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:30;display:flex;align-items:flex-end}
+.sheet{background:#fff;width:100%;border-radius:20px 20px 0 0;max-height:86%;overflow-y:auto;padding-bottom:18px;animation:rise .22s ease}
+@keyframes rise{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet-head{display:flex;align-items:center;padding:18px 18px 12px;position:sticky;top:0;background:#fff}
+.sheet-head h3{margin:0 auto;font-size:18px;font-weight:800}
+.sheet-head .x{background:none;color:var(--bol-action);font-size:22px;font-weight:700}
+.mrow{display:flex;align-items:flex-start;gap:13px;padding:16px 18px;border-top:1px solid var(--line);cursor:pointer;background:none;width:100%;text-align:left}
+.mrow .mr-body{flex:1}
+.mrow .mr-title{font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mrow .mr-sub{font-size:13.5px;color:var(--muted);margin-top:4px;line-height:1.4}
+.mrow .mr-sub .pop{color:var(--ok);display:block;margin-top:2px}
+.mrow .chev{align-self:center;color:var(--muted);font-size:20px}
+.mrow.disabled{opacity:.45}
+
+/* ── bank redirect / login / approve (full-screen takeover) ─────────────── */
+.bank-head{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:14px 16px;color:#fff}
+.bank-head .logo{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.2);font-size:8px}
+.bank-head .t{font-weight:800;font-size:16px}
+.center{text-align:center}
+.spinner{width:44px;height:44px;border-radius:50%;border:4px solid #e2e2e6;border-top-color:#19191a;margin:30px auto;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.tink-redirect{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;gap:10px}
+.tink-redirect .badge{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px}
+.tink-redirect .badge .dot{width:30px;height:30px;border-radius:8px;background:var(--bol-action);color:#fff;display:flex;align-items:center;justify-content:center}
+.faceid-wrap{position:relative;width:104px;height:104px;margin:18px auto 14px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.faceid-glyph{width:86px;height:86px}
+.faceid-wrap .scan{position:absolute;left:12px;right:12px;height:3px;border-radius:3px;background:currentColor;box-shadow:0 0 10px currentColor;top:12px;opacity:0}
+.faceid-wrap.scanning .scan{opacity:.9;animation:scan 1.3s ease-in-out}
+.faceid-wrap.scanning .faceid-glyph{animation:fpulse 1.3s ease-in-out}
+@keyframes scan{0%{top:14px}50%{top:88px}100%{top:14px}}
+@keyframes fpulse{0%,100%{opacity:1}50%{opacity:.55}}
+.ptick{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#e3f5e9;color:var(--ok);font-size:30px;margin:16px auto}
+.acct{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:11px;padding:11px;margin-bottom:9px;cursor:pointer;font-size:13px}
+.acct.selected{border-color:#19191a;box-shadow:0 0 0 2px rgba(0,0,0,.08)}
+.acct .nm{font-weight:600}.acct .bal{color:var(--muted);font-size:12px}.acct .amt{margin-left:auto;font-weight:700}
+.summary{background:#f7f7fb;border:1px solid var(--line);border-radius:11px;padding:12px;font-size:13px;margin:12px 0}
+.summary .r{display:flex;justify-content:space-between;padding:4px 0}.summary .r .k{color:var(--muted)}
+.summary .r.big{font-weight:800;border-top:1px solid var(--line);margin-top:5px;padding-top:8px}
+.bbtn{width:100%;color:#fff;font-weight:700;font-size:15px;border-radius:12px;padding:14px;margin-top:6px}
+.bbtn.ghost{background:#fff;color:var(--ink);border:1px solid #c7c7d0;margin-top:9px}
+.bbtn:disabled{opacity:.6;cursor:default}
+
+/* confirmation */
+.confirmed{text-align:center;padding:30px 18px}
+.confirmed .tick{width:70px;height:70px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#e3f5e9;color:var(--ok);font-size:36px;margin:10px auto 16px}
+.confirmed h1{font-size:22px;margin:0 0 8px}
+.confirmed .kv{display:grid;grid-template-columns:130px 1fr;gap:7px 10px;text-align:left;max-width:300px;margin:18px auto;font-size:14px}
+.confirmed .kv dt{color:var(--muted)}.confirmed .kv dd{margin:0;font-weight:600}
+.outline-btn{background:#fff;border:1.5px solid var(--bol-action);color:var(--bol-action);font-weight:700;border-radius:24px;padding:12px 18px;margin-top:8px}
+
+/* "Learn how your data is used" sheet */
+.learn-overlay{position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:35;display:flex;align-items:flex-end}
+.learn{background:#fff;width:100%;border-radius:20px 20px 0 0;max-height:80%;overflow-y:auto;padding:20px}
+.learn h3{margin:0 0 12px;font-size:18px}.learn h4{margin:16px 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.learn p{font-size:14px;color:#33333a;line-height:1.55;margin:0 0 8px}
+.learn .x{float:right;background:#ececf1;border-radius:6px;padding:6px 10px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="demo-cap"><strong>DEMO</strong> — mobile bol.com checkout for the Adyen Customer Hosted Consent trial. Synthetic; not a real page. · <a href="index.html">🖥 Desktop version</a></div>
+
+<div class="device">
+  <div class="island"></div>
+  <div class="screen">
+    <div class="status">
+      <span>10:36</span>
+      <span class="right">▮▮▯ &nbsp;􀙇&nbsp; <span class="bat"><i></i></span></span>
+    </div>
+
+    <!-- ════ SCREEN 1 · Bestellen (checkout) ════ -->
+    <div data-screen="checkout" style="display:flex;flex-direction:column;flex:1;min-height:0">
+      <div class="appbar"><button class="back">‹ bol</button><span class="title">Bestellen</span></div>
+      <div class="view"><div class="pad">
+
+        <div class="ordercard">
+          <div class="totaal">Totaal</div>
+          <div class="amt">€ 69,<span style="font-size:16px">95</span></div>
+          <div class="prod">
+            <span class="thumb">❄️</span>
+            <span class="t"><b>Mini Aircooler met Water USB-C — LED Licht</b><br><span class="muted">Verkoop door: Karsten Int · Aantal 1</span></span>
+          </div>
+        </div>
+
+        <h2 class="sec">Betaalmethode</h2>
+
+        <!-- before a method is chosen: trigger that opens the sheet -->
+        <button class="method-trigger" data-test="open-methods" id="open-methods">
+          <span class="ideal-pill"><span class="i">iDEAL</span><span class="w">wero</span></span>
+          <span><span class="lab">Kies je betaalmethode</span><span class="sub">iDEAL | Wero, Pay by bank, Creditcard…</span></span>
+          <span class="chev">›</span>
+        </button>
+
+        <!-- after Pay by bank is chosen -->
+        <div class="pbb-sel hidden" id="pbb-sel">
+          <div class="head">
+            <span class="lab">Pay by bank</span> <span class="tag-new">Nieuw</span>
+            <button class="change" data-test="change-method" id="change-method">Wijzig</button>
+          </div>
+          <div class="muted" style="margin-top:4px">Betaal direct vanaf je eigen bankrekening · Powered by Tink, via Adyen</div>
+
+          <p class="label">Kies je bank</p>
+          <div class="bank-list" id="bank-list" role="radiogroup" aria-label="Choose your bank"></div>
+
+          <div class="consent hidden" id="consent-block" data-test="consent-screen">
+            <div class="c-head">
+              <span class="chosen-bank" data-test="consent-bank" id="chosen-bank"></span>
+              <span class="muted" style="margin-left:auto">Beveiligd door Tink</span>
+            </div>
+            <p class="legal-disclosure" data-test="legal-disclosure">
+              bol.com uses Tink to initiate your payment. By selecting &ldquo;Betalen&rdquo;, you agree to Tink's
+              <a href="https://tink.com/legal/end-user-terms" target="_blank" rel="noopener" data-test="tos-link">End-User Terms of Service</a>
+              and acknowledge that you have read and understood the
+              <a href="https://tink.com/legal/privacy-notice" target="_blank" rel="noopener" data-test="privacy-link">Privacy Notice</a>.
+              <a href="#" data-test="learn-data-link" id="learn-data-link">Learn how your data is used</a>.
+            </p>
+            <div class="c-foot">🔒 Beveiligd door <b>Tink</b> · A Visa solution</div>
+          </div>
+        </div>
+
+      </div></div>
+      <div class="paybar">
+        <button class="btn-pay" data-test="accept" id="pay-cta">Betalen €&nbsp;69,95</button>
+        <button class="decline-link" data-test="decline" id="decline">Andere betaalmethode kiezen</button>
+      </div>
+    </div>
+
+    <!-- ════ SCREEN 2 · bank app redirect / login / approve ════ -->
+    <div data-screen="bank" class="hidden" style="display:none;flex-direction:column;flex:1;min-height:0">
+      <div id="bank-content" style="display:flex;flex-direction:column;flex:1;min-height:0"></div>
+    </div>
+
+    <!-- ════ SCREEN 3 · confirmation ════ -->
+    <div data-screen="confirmed" class="hidden" style="display:none;flex-direction:column;flex:1;min-height:0">
+      <div class="appbar"><span class="title" style="transform:none;margin:0 auto">bol.com</span></div>
+      <div class="view"><div class="pad">
+        <div class="confirmed" data-test="order-confirmation">
+          <div class="tick">✓</div>
+          <h1>Bedankt voor je bestelling!</h1>
+          <p class="muted">Je betaling is gelukt en je bestelling is bevestigd.</p>
+          <dl class="kv">
+            <dt>Bedrag betaald</dt><dd>€&nbsp;69,95</dd>
+            <dt>Betaald met</dt><dd data-test="paid-with" id="confirm-paidwith"></dd>
+            <dt>Bestelnummer</dt><dd data-test="order-number">BOL-2026-0049213</dd>
+          </dl>
+          <button class="outline-btn" data-test="restart" id="restart">Terug naar start</button>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- "Betalen via" bottom sheet -->
+    <div class="sheet-overlay hidden" id="sheet" data-test="methods-sheet">
+      <div class="sheet">
+        <div class="sheet-head"><h3>Betalen via</h3><button class="x" data-close-sheet aria-label="Close">✕</button></div>
+
+        <button class="mrow" data-test="method-bank" data-method="bank">
+          <span class="pm-logo" style="background:var(--bol-action)">⤳</span>
+          <span class="mr-body">
+            <span class="mr-title">Pay by bank <span class="tag-new">Nieuw</span></span>
+            <span class="mr-sub">Betaal direct vanaf je eigen bankrekening<span class="pop">Powered by Tink · via Adyen</span></span>
+          </span><span class="chev">›</span>
+        </button>
+
+        <button class="mrow" data-test="method-ideal" data-method="ideal">
+          <span class="ideal-pill"><span class="i">iDEAL</span><span class="w">wero</span></span>
+          <span class="mr-body">
+            <span class="mr-title">iDEAL | Wero</span>
+            <span class="mr-sub">Online betalen via je Nederlandse bank<span class="pop">Meest gebruikte betaalmethode in Nederland</span></span>
+          </span><span class="chev">›</span>
+        </button>
+
+        <button class="mrow" data-test="method-card" data-method="card">
+          <span class="pm-logo" style="background:#1a1f71">VISA</span>
+          <span class="mr-body">
+            <span class="mr-title">Creditcard of betaalpas</span>
+            <span class="mr-sub">Snel en eenvoudig betalen met je creditcard of betaalpas</span>
+          </span><span class="chev">›</span>
+        </button>
+
+        <div class="mrow disabled">
+          <span class="pm-logo" style="background:#888">⏱</span>
+          <span class="mr-body">
+            <span class="mr-title">Achteraf Betalen</span>
+            <span class="mr-sub">Helaas is het op dit moment niet mogelijk om achteraf te betalen.</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Learn how your data is used (sheet) -->
+    <div class="learn-overlay hidden" id="learn-data" data-test="learn-data-modal">
+      <div class="learn">
+        <button class="x" data-close-learn aria-label="Close">✕</button>
+        <h3>How Tink uses your data</h3>
+        <p>Tink will access your personal data and securely share the necessary information with bol.com.</p>
+        <h4>Which data will be used?</h4>
+        <p>Account information such as account numbers, balances, account types, and other financial details linked to your accounts.</p>
+        <h4>Access frequency and validity</h4>
+        <p>Your data will be accessed one time, and the authorization will remain valid for 24 hours.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+var BANKS = [
+  {id:'ing',       name:'ING',          color:'#FF6200', mark:'ING'},
+  {id:'rabobank',  name:'Rabobank',     color:'#000099', mark:'Rabo'},
+  {id:'abnamro',   name:'ABN AMRO',     color:'#00857a', mark:'ABN·AMRO'},
+  {id:'sns',       name:'SNS',          color:'#007ac2', mark:'SNS'},
+  {id:'asn',       name:'ASN Bank',     color:'#76b82a', mark:'ASN'},
+  {id:'regiobank', name:'RegioBank',    color:'#e2001a', mark:'Regio'},
+  {id:'bunq',      name:'bunq',         color:'#1e1e50', mark:'bunq'},
+  {id:'knab',      name:'Knab',         color:'#00b2a9', mark:'Knab'},
+  {id:'triodos',   name:'Triodos Bank', color:'#3f7d5a', mark:'Triodos'}
+];
+var selectedBank = null;
+var FACEID_SVG =
+  '<svg class="faceid-glyph" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M8 30 V16 a8 8 0 0 1 8-8 H30"/><path d="M66 8 H80 a8 8 0 0 1 8 8 V30"/>' +
+    '<path d="M88 66 V80 a8 8 0 0 1 -8 8 H66"/><path d="M30 88 H16 a8 8 0 0 1 -8 -8 V66"/>' +
+    '<path d="M34 38 V46"/><path d="M62 38 V46"/><path d="M48 40 V56 H41"/><path d="M34 66 q14 11 28 0"/>' +
+  '</svg>';
+function logoHTML(b){ return '<span class="logo" style="background:'+b.color+'">'+b.mark+'</span>'; }
+function schedule(fn, ms){ window.setTimeout(fn, ms); }
+
+function showStep(name){
+  document.querySelectorAll('[data-screen]').forEach(function(s){
+    var on = s.dataset.screen === name;
+    s.classList.toggle('hidden', !on);
+    s.style.display = on ? 'flex' : 'none';
+  });
+}
+
+/* bank list */
+(function(){
+  var list = document.getElementById('bank-list');
+  BANKS.forEach(function(b){
+    var r = document.createElement('button');
+    r.className = 'bank-row'; r.type='button';
+    r.dataset.bank = b.id; r.setAttribute('data-test','bank-'+b.id);
+    r.innerHTML = logoHTML(b) + '<span class="bank-name">'+b.name+'</span>';
+    list.appendChild(r);
+  });
+})();
+
+function openSheet(){ document.getElementById('sheet').classList.remove('hidden'); }
+function closeSheet(){ document.getElementById('sheet').classList.add('hidden'); }
+
+function selectMethod(m){
+  closeSheet();
+  if(m === 'bank'){
+    document.getElementById('open-methods').classList.add('hidden');
+    document.getElementById('pbb-sel').classList.remove('hidden');
+  } else {
+    /* other methods are out of scope for this demo — just reopen the picker */
+    document.getElementById('open-methods').classList.remove('hidden');
+    document.getElementById('pbb-sel').classList.add('hidden');
+  }
+}
+
+function selectBank(id){
+  selectedBank = BANKS.filter(function(b){return b.id===id;})[0] || null;
+  if(!selectedBank) return;
+  document.querySelectorAll('.bank-row').forEach(function(r){ r.classList.toggle('selected', r.dataset.bank===id); });
+  document.getElementById('chosen-bank').innerHTML = logoHTML(selectedBank) + '<span>'+selectedBank.name+'</span>';
+  document.getElementById('consent-block').classList.remove('hidden');
+  document.getElementById('consent-block').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+/* proceed → redirect to bank app */
+function startBank(){
+  if(!selectedBank){ document.getElementById('open-methods').scrollIntoView({behavior:'smooth'}); return; }
+  showStep('bank');
+  bankRedirect();
+}
+function bankRedirect(){
+  document.getElementById('bank-content').innerHTML =
+    '<div class="tink-redirect">' +
+      '<div class="badge"><span class="dot">⤳</span> Pay by bank</div>' +
+      '<div class="spinner"></div>' +
+      '<p class="muted">Je wordt veilig doorgestuurd naar de app van '+selectedBank.name+'…</p>' +
+    '</div>';
+  schedule(bankLogin, 1300);
+}
+function bankLogin(){
+  document.getElementById('bank-content').innerHTML =
+    '<div class="bank-head" style="background:'+selectedBank.color+'"><span class="logo">'+selectedBank.mark+'</span><span class="t">'+selectedBank.name+'</span></div>' +
+    '<div class="view"><div class="pad center">' +
+      '<h2 class="sec" style="margin-top:10px">Log in bij '+selectedBank.name+'</h2>' +
+      '<p class="muted">Bevestig je betaling aan bol.com met Face ID.</p>' +
+      '<div class="faceid-wrap" id="faceid" style="color:'+selectedBank.color+'"><span class="scan"></span>'+FACEID_SVG+'</div>' +
+      '<p class="muted" id="faceid-hint">Tik om in te loggen met Face ID</p>' +
+      '<button class="bbtn" data-test="phone-faceid" id="faceid-btn" style="background:'+selectedBank.color+'">Gebruik Face ID</button>' +
+    '</div></div>';
+}
+function runFaceScan(){
+  var w = document.getElementById('faceid');
+  if(!w || w.classList.contains('scanning')) return;
+  w.classList.add('scanning');
+  document.getElementById('faceid-hint').textContent = 'Scannen…';
+  var btn = document.getElementById('faceid-btn'); if(btn){ btn.disabled=true; btn.textContent='Verifiëren…'; }
+  schedule(function(){
+    w.classList.remove('scanning'); w.innerHTML = '<div class="ptick">✓</div>';
+    document.getElementById('faceid-hint').textContent='Face ID herkend'; if(btn) btn.textContent='Geverifieerd';
+    schedule(bankApprove, 650);
+  }, 1300);
+}
+function bankApprove(){
+  var frag = selectedBank.mark.replace(/[^A-Za-z]/g,'').toUpperCase().slice(0,4).padEnd(4,'X');
+  var c = document.getElementById('bank-content');
+  c.innerHTML =
+    '<div class="bank-head" style="background:'+selectedBank.color+'"><span class="logo">'+selectedBank.mark+'</span><span class="t">'+selectedBank.name+'</span></div>' +
+    '<div class="view"><div class="pad">' +
+      '<h2 class="sec" style="margin-top:6px">Betaling goedkeuren</h2>' +
+      '<p class="muted">Kies een rekening en bevestig.</p>' +
+      '<div class="acct selected" data-acct="1"><span><span class="nm">Betaalrekening</span><br><span class="bal">NL12 '+frag+' …45 67</span></span><span class="amt">€ 1.284,50</span></div>' +
+      '<div class="acct" data-acct="2"><span><span class="nm">Spaarrekening</span><br><span class="bal">NL34 '+frag+' …65 43</span></span><span class="amt">€ 8.720,00</span></div>' +
+      '<div class="summary"><div class="r"><span class="k">Begunstigde</span><span>bol.com b.v.</span></div>' +
+        '<div class="r"><span class="k">Soort</span><span>Eenmalige betaling</span></div>' +
+        '<div class="r big"><span>Bedrag</span><span>€ 69,95</span></div></div>' +
+      '<button class="bbtn" data-test="phone-approve" id="approve-btn" style="background:'+selectedBank.color+'">Goedkeuren &amp; betaal € 69,95</button>' +
+      '<button class="bbtn ghost" data-test="phone-cancel" id="bank-cancel">Annuleren</button>' +
+    '</div></div>';
+  c.querySelectorAll('.acct').forEach(function(a){
+    a.addEventListener('click', function(){ c.querySelectorAll('.acct').forEach(function(x){x.classList.remove('selected');}); a.classList.add('selected'); });
+  });
+}
+function bankProcessing(){
+  document.getElementById('bank-content').innerHTML =
+    '<div class="tink-redirect"><div class="spinner"></div><p class="muted">Je betaling wordt bevestigd…</p></div>';
+  schedule(finish, 1400);
+}
+function finish(){
+  document.getElementById('confirm-paidwith').innerHTML = '<span class="chosen-bank">'+logoHTML(selectedBank)+'<span>'+selectedBank.name+'</span></span>';
+  showStep('confirmed');
+}
+function resetDemo(){
+  selectedBank=null;
+  document.getElementById('consent-block').classList.add('hidden');
+  document.querySelectorAll('.bank-row').forEach(function(r){r.classList.remove('selected');});
+  document.getElementById('open-methods').classList.remove('hidden');
+  document.getElementById('pbb-sel').classList.add('hidden');
+  showStep('checkout');
+}
+
+document.addEventListener('click', function(e){
+  if(e.target.closest('#open-methods')){ openSheet(); return; }
+  if(e.target.closest('[data-close-sheet]')){ closeSheet(); return; }
+  if(e.target.id==='change-method'){ openSheet(); return; }
+  var mrow = e.target.closest('.mrow[data-method]');
+  if(mrow){ selectMethod(mrow.dataset.method); return; }
+  var row = e.target.closest('.bank-row');
+  if(row){ selectBank(row.dataset.bank); return; }
+  if(e.target.closest('#learn-data-link')){ e.preventDefault(); document.getElementById('learn-data').classList.remove('hidden'); return; }
+  if(e.target.closest('[data-close-learn]')){ document.getElementById('learn-data').classList.add('hidden'); return; }
+  if(e.target.id==='pay-cta'){ startBank(); return; }
+  if(e.target.id==='decline'){ openSheet(); return; }
+  if(e.target.id==='faceid-btn' || e.target.closest('#faceid')){ runFaceScan(); return; }
+  if(e.target.id==='approve-btn'){ bankProcessing(); return; }
+  if(e.target.id==='bank-cancel'){ showStep('checkout'); return; }
+  if(e.target.id==='restart'){ resetDemo(); return; }
+  if(e.target.classList.contains('sheet-overlay')){ closeSheet(); }
+  if(e.target.classList.contains('learn-overlay')){ document.getElementById('learn-data').classList.add('hidden'); }
+});
+
+/* monitoring demo: ?broken=<data-test> drops a required element */
+(function(){
+  var p = new URLSearchParams(window.location.search).get('broken');
+  if(!p) return;
+  var el = document.querySelector('[data-test="'+p+'"]');
+  if(el && el.parentNode){ el.parentNode.removeChild(el); }
+})();
+
+showStep('checkout');
+</script>
+</body>
+</html>
